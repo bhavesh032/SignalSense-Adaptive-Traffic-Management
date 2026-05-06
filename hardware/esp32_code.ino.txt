@@ -1,0 +1,113 @@
+#include <WiFi.h>
+#include <WebServer.h>
+
+const char* ssid = "chaos";
+const char* password = "RedHat$C#";
+
+WebServer server(80);
+
+// 🚦 Road A
+int A_R = 23, A_Y = 22, A_G = 21;
+
+// 🚦 Road B
+int B_R = 19, B_Y = 18, B_G = 5;
+
+// 🚦 Road C (UPDATED)
+int C_R = 4, C_Y = 2, C_G = 15;
+
+// 🚦 Road D (UPDATED)
+int D_R = 13, D_Y = 12, D_G = 14;
+
+int greenTime = 5000;
+
+// 🔴 All Red
+void allRed() {
+  digitalWrite(A_R, HIGH);
+  digitalWrite(B_R, HIGH);
+  digitalWrite(C_R, HIGH);
+  digitalWrite(D_R, HIGH);
+}
+
+// 📡 Receive data from Python
+void handleSet() {
+  if (server.hasArg("green")) {
+    greenTime = server.arg("green").toInt();
+  }
+  Serial.print("Updated Green Time: ");
+  Serial.println(greenTime);
+  server.send(200, "text/plain", "OK");
+}
+
+void setup() {
+  Serial.begin(115200);
+
+  pinMode(A_R, OUTPUT); pinMode(A_Y, OUTPUT); pinMode(A_G, OUTPUT);
+  pinMode(B_R, OUTPUT); pinMode(B_Y, OUTPUT); pinMode(B_G, OUTPUT);
+  pinMode(C_R, OUTPUT); pinMode(C_Y, OUTPUT); pinMode(C_G, OUTPUT);
+  pinMode(D_R, OUTPUT); pinMode(D_Y, OUTPUT); pinMode(D_G, OUTPUT);
+
+  allRed();
+
+  WiFi.begin(ssid, password);
+  Serial.print("Connecting");
+
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(1000);
+    Serial.print(".");
+  }
+
+  Serial.println("\nConnected!");
+  Serial.print("IP Address: ");
+  Serial.println(WiFi.localIP());
+
+  server.on("/set", handleSet);
+  server.begin();
+}
+
+void loop() {
+  server.handleClient();
+
+  // 🚦 ROAD A
+  allRed();
+  digitalWrite(A_R, LOW);
+  digitalWrite(A_G, HIGH);
+  delay(greenTime);
+
+  digitalWrite(A_G, LOW);
+  digitalWrite(A_Y, HIGH);
+  delay(2000);
+  digitalWrite(A_Y, LOW);
+
+  // 🚦 ROAD B
+  allRed();
+  digitalWrite(B_R, LOW);
+  digitalWrite(B_G, HIGH);
+  delay(greenTime);
+
+  digitalWrite(B_G, LOW);
+  digitalWrite(B_Y, HIGH);
+  delay(2000);
+  digitalWrite(B_Y, LOW);
+
+  // 🚦 ROAD C
+  allRed();
+  digitalWrite(C_R, LOW);
+  digitalWrite(C_G, HIGH);
+  delay(greenTime);
+
+  digitalWrite(C_G, LOW);
+  digitalWrite(C_Y, HIGH);
+  delay(2000);
+  digitalWrite(C_Y, LOW);
+
+  // 🚦 ROAD D
+  allRed();
+  digitalWrite(D_R, LOW);
+  digitalWrite(D_G, HIGH);
+  delay(greenTime);
+
+  digitalWrite(D_G, LOW);
+  digitalWrite(D_Y, HIGH);
+  delay(2000);
+  digitalWrite(D_Y, LOW);
+}

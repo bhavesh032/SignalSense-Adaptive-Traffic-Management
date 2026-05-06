@@ -1,0 +1,82 @@
+import cv2
+import requests
+import time
+from ultralytics import YOLO
+
+# 🔴 Replace with your ESP32 IP
+ESP32_IP = "http://192.168.0.102"
+
+# Load YOLO model
+model = YOLO("yolov8n.pt")
+
+# Start camera
+cap = cv2.VideoCapture(0)
+
+if not cap.isOpened():
+    cap = cv2.VideoCapture(1)
+
+if not cap.isOpened():
+    print("❌ Camera not working")
+    exit()
+
+print("✅ Camera started")
+
+while True:
+    ret, frame = cap.read()
+    if not ret:
+        continue
+
+    # 🔥 Detect EVERYTHING
+    results = model.predict(source=frame, conf=0.3)
+
+    object_count = 0
+
+    for result in results:
+        boxes = result.boxes
+
+        if boxes is not None:
+            for box in boxes:
+                cls_id = int(box.cls[0].item())
+                label = model.names[cls_id]
+                conf = float(box.conf[0].item())
+
+                # Count EVERY detected object
+                object_count += 1
+
+                # Draw bounding box
+                x1, y1, x2, y2 = map(int, box.xyxy[0].tolist())
+                cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
+                cv2.putText(frame, f"{label}", (x1, y1 - 10),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+
+    # 🧠 Smart timing based on object count
+    if object_count == 0:
+        green_time = 3000
+    elif object_count <= 2:
+        green_time = 5000
+    elif object_count <= 3:
+        green_time = 8000
+    else:
+        green_time = 10000
+
+    print(f"Objects: {object_count} | Green Time: {green_time}")
+
+    # 📡 Send to ESP32
+    try:
+        requests.get(f"{ESP32_IP}/set?green={green_time}")
+    except:
+        print("⚠️ ESP32 not reachable")
+
+    # Display info
+    cv2.putText(frame, f"Objects: {object_count}", (20, 50),
+                cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
+
+    cv2.imshow("Smart Traffic Demo", frame)
+
+    time.sleep(2)
+
+    if cv2.waitKey(1) & 0xFF == 27:
+        break
+
+cap.release()
+cv2.destroyAllWindows()
